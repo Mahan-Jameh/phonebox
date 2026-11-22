@@ -22,4 +22,13 @@ class WebsiteUrlTest {
         assertNull(WebsiteUrl.normalize("https://example.com/has space"))
         assertNull(WebsiteUrl.normalize("https://example.com/" + "a".repeat(4096)))
     }
+
+    @Test
+    fun compactLayoutIsLimitedToTheTrueTradeExchangeMarket() {
+        assertEquals(true, WebsiteUrl.isTrueTradeMarket("https://www.thetruetrade.io/fa/trade/BTCUSDT"))
+        assertEquals(true, WebsiteUrl.isTrueTradeMarket("https://www.thetruetrade.io/trade/futures/PAXGUSDT"))
+        listOf("https://www.thetruetrade.io/fa/login", "https://www.thetruetrade.io:8443/fa/trade/BTCUSDT",
+            "https://www.thetruetrade.io.example.net/fa/trade/BTCUSDT")
+            .forEach { assertEquals(false, WebsiteUrl.isTrueTradeMarket(it)) }
+    }
 }

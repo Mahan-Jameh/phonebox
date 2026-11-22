@@ -23,10 +23,20 @@ internal data class WebsiteView(
     var cookies: Boolean,
     var zoom: Boolean,
     var rect: WebsiteRect = WebsiteRect(0f, 0f, 0f, 0f),
+    var tradeLayout: Boolean = true,
 )
 
 /** Accept only HTTPS top-level destinations; webpage scripts and redirects cannot escape to app or file schemes. */
 internal object WebsiteUrl {
+    private val tradePath = Regex("/(?:[a-z]{2}/)?trade/(?:futures/)?[A-Z0-9]{3,30}/?")
+
+    fun isTrueTradeMarket(value: String?): Boolean {
+        val url = value?.let(::normalize) ?: return false
+        val uri = URI(url)
+        return uri.host.equals("www.thetruetrade.io", ignoreCase = true) &&
+            (uri.port == -1 || uri.port == 443) && tradePath.matches(uri.rawPath)
+    }
+
     fun normalize(value: String): String? {
         if (value.length !in 1..4096 || value.any { it.isWhitespace() || it.code < 0x20 }) return null
         return try {

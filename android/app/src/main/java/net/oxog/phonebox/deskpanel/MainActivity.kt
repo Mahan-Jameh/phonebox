@@ -63,6 +63,9 @@ class MainActivity : Activity(), SensorEventListener {
     private var fullscreenWebsite: String? = null
     private var fullscreenCustomView: View? = null
     private var fullscreenCustomCallback: WebChromeClient.CustomViewCallback? = null
+    private val tradeLayoutScript by lazy {
+        assets.open("true-trade-layout.js").bufferedReader().use { it.readText() }.trim()
+    }
     /** False when Android could not start its WebView (#385): the activity then only shows why. */
     private val hasWeb get() = ::web.isInitialized
     private val panelLanguageTag = Regex("auto|[a-z]{2}(-[A-Za-z]{2,4})?")
@@ -446,8 +449,20 @@ class MainActivity : Activity(), SensorEventListener {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
                 WebsiteUrl.normalize(request.url.toString()) == null
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = WebsiteUrl.normalize(url) == null
+
+            override fun onPageFinished(view: WebView, url: String) {
+                if (WebsiteUrl.isTrueTradeMarket(url)) applyTradeLayout(item)
+            }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) item.webView.settings.safeBrowsingEnabled = true
+    }
+
+    private fun applyTradeLayout(item: WebsiteView) {
+        if (item.javascript && WebsiteUrl.isTrueTradeMarket(item.url) &&
+            WebsiteUrl.isTrueTradeMarket(item.webView.url)) {
+            // A fixed presentation script. It receives no PhoneBox credentials or bridge object.
+            item.webView.evaluateJavascript("$tradeLayoutScript(${item.tradeLayout})", null)
+        }
     }
 
     private fun updateWebsiteBounds(item: WebsiteView) {
@@ -486,6 +501,10 @@ class MainActivity : Activity(), SensorEventListener {
             "back" -> if (item.webView.canGoBack()) item.webView.goBack()
             "zoomIn" -> if (item.zoom) item.webView.zoomIn()
             "zoomOut" -> if (item.zoom) item.webView.zoomOut()
+            "tradeLayout" -> if (WebsiteUrl.isTrueTradeMarket(item.url)) {
+                item.tradeLayout = !item.tradeLayout
+                applyTradeLayout(item)
+            }
             "fullscreen" -> {
                 fullscreenWebsite = if (fullscreenWebsite == id) null else id
                 websiteViews.values.forEach(::updateWebsiteBounds)
@@ -544,7 +563,7 @@ class MainActivity : Activity(), SensorEventListener {
 
         @JavascriptInterface
         fun websiteAction(key: String, id: String, action: String) {
-            if (!ok(key) || id.length > 180 || action !in setOf("refresh", "back", "zoomIn", "zoomOut", "fullscreen")) return
+            if (!ok(key) || id.length > 180 || action !in setOf("refresh", "back", "zoomIn", "zoomOut", "fullscreen", "tradeLayout")) return
             runOnUiThread { websiteAction(id, action) }
         }
 

@@ -32,6 +32,8 @@ W.website = {
     const zoomIn = action('Zoom in', '+', 'zoomIn');
     const full = action('Fullscreen', '⛶', 'fullscreen');
     const url = httpsUrl(o.url);
+    const tradeMarket = url && new URL(url).origin === 'https://www.thetruetrade.io' &&
+      /^\/(?:[a-z]{2}\/)?trade\/(?:futures\/)?[A-Z0-9]{3,30}\/?$/.test(new URL(url).pathname);
     title.textContent = url ? new URL(url).host : 'Website';
     const frame = bridge ? null : document.createElement('iframe');
     if (frame) {
@@ -40,7 +42,12 @@ W.website = {
       frame.setAttribute('referrerpolicy', 'no-referrer');
       if (url) frame.src = url;
     }
-    bar.append(back, reload, zoomOut, zoomIn, full, title);
+    bar.append(back, reload, zoomOut, zoomIn, full);
+    if (bridge?.websiteAction && tradeMarket) {
+      const layout = action('نمای کامل یا نمای معامله', '◫', 'tradeLayout');
+      bar.append(layout);
+    }
+    bar.append(title);
     const stage = h('div', 'ws-stage');
     if (frame) stage.append(frame);
     else stage.append(h('div', 'ws-native-note', 'Native secure WebView'));

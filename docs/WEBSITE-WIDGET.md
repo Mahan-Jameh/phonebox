@@ -9,6 +9,13 @@ On the phone, use the page's own touch controls. The widget toolbar provides bac
 Back exits fullscreen first, then follows the website's history. JavaScript, first-party cookies and persistent sign-in
 sessions, pinch zoom and fullscreen video are supported. Cookies and JavaScript can be turned off in widget options.
 
+TrueTrade exchange market URLs start in a compact layout when the site's order form and activity tabs are present.
+On a phone the order form and the activity tabs stack vertically, while wider screens show them side by side. The
+activity box keeps the site's tabs for positions, pending orders and history. Use the **◫** toolbar button to switch
+to the full page for the chart or to change markets. The compact layout uses the original TrueTrade controls and
+leaves sign-in, order confirmation and account handling to the website. If the expected layout is missing, PhoneBox
+shows the regular site.
+
 The site runs in a separate WebView, not in the PhoneBox panel WebView. It receives no `Android` interface, PhoneBox
 bridge key, agent proxy headers, `/agent` transport or widget messaging API. PhoneBox blocks non-HTTPS navigation,
 mixed content, file/content access and third-party cookies. Website traffic goes directly from the phone to the configured
