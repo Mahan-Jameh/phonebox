@@ -31,6 +31,7 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.widget.TextView
+import android.widget.FrameLayout
 import android.widget.Toast
 import android.webkit.JavascriptInterface
 import android.webkit.ConsoleMessage
@@ -56,6 +57,12 @@ import java.util.Locale
 class MainActivity : Activity(), SensorEventListener {
 
     private lateinit var web: WebView
+    private lateinit var root: FrameLayout
+    private lateinit var websiteLayer: FrameLayout
+    private val websiteViews = linkedMapOf<String, WebsiteView>()
+    private var fullscreenWebsite: String? = null
+    private var fullscreenCustomView: View? = null
+    private var fullscreenCustomCallback: WebChromeClient.CustomViewCallback? = null
     /** False when Android could not start its WebView (#385): the activity then only shows why. */
     private val hasWeb get() = ::web.isInitialized
     private val panelLanguageTag = Regex("auto|[a-z]{2}(-[A-Za-z]{2,4})?")
@@ -110,7 +117,11 @@ class MainActivity : Activity(), SensorEventListener {
             return
         }
         web.setBackgroundColor(0xFF000000.toInt())
-        setContentView(web)
+        root = FrameLayout(this)
+        websiteLayer = FrameLayout(this)
+        root.addView(web, FrameLayout.LayoutParams(-1, -1))
+        root.addView(websiteLayer, FrameLayout.LayoutParams(-1, -1))
+        setContentView(root)
 
         with(web.settings) {
             javaScriptEnabled = true
@@ -126,6 +137,22 @@ class MainActivity : Activity(), SensorEventListener {
                 if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR)
                     Log.e("PhoneBoxWeb", "${message.sourceId()}:${message.lineNumber()} ${message.message()}")
                 return true
+            }
+
+            override fun onShowCustomView(view: View, callback: CustomViewCallback) {
+                fullscreenCustomView?.let { websiteLayer.removeView(it) }
+                fullscreenCustomView = view
+                fullscreenCustomCallback = callback
+                websiteLayer.addView(view, FrameLayout.LayoutParams(-1, -1))
+                view.bringToFront()
+                hideSystemUi()
+            }
+
+            override fun onHideCustomView() {
+                fullscreenCustomView?.let { websiteLayer.removeView(it) }
+                fullscreenCustomView = null
+                fullscreenCustomCallback = null
+                hideSystemUi()
             }
         }
         web.webViewClient = object : WebViewClient() {
@@ -255,6 +282,15 @@ class MainActivity : Activity(), SensorEventListener {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        if (fullscreenCustomView != null) { dismissWebsiteCustomView(); return }
+        fullscreenWebsite?.let { id ->
+            fullscreenWebsite = null
+            websiteViews[id]?.let(::updateWebsiteBounds)
+            return
+        }
+        websiteViews.values.firstOrNull { it.webView.hasFocus() && it.webView.canGoBack() }?.let {
+            it.webView.goBack(); return
+        }
         // Kiosk behaviour: Back does not leave the app, it returns to the first page.
         if (!hasWeb) return super.onBackPressed() // nothing to return to without the panel
         web.evaluateJavascript("window.onAndroidBack && window.onAndroidBack()", null)
@@ -265,6 +301,7 @@ class MainActivity : Activity(), SensorEventListener {
         if (!hasWeb) return
         resumed = true
         web.onResume()
+        websiteViews.values.forEach { it.webView.onResume() }
         web.evaluateJavascript("window.onAppPause && window.onAppPause(false)", null) // the panel catches up at once
         stream.start()
         hideSystemUi()
@@ -288,6 +325,7 @@ class MainActivity : Activity(), SensorEventListener {
             web.evaluateJavascript("window.onAppPause && window.onAppPause(true)", null)
             web.onPause()
         }
+        websiteViews.values.forEach { it.webView.onPause() }
         super.onPause()
     }
 
@@ -303,6 +341,8 @@ class MainActivity : Activity(), SensorEventListener {
             (web.parent as? ViewGroup)?.removeView(web) // a WebView must be detached before destroy()
             web.destroy()
         }
+        websiteViews.values.forEach { it.webView.stopLoading(); it.webView.destroy() }
+        websiteViews.clear()
         super.onDestroy()
     }
 
@@ -342,6 +382,125 @@ class MainActivity : Activity(), SensorEventListener {
     private val bridgeKey = java.util.UUID.randomUUID().toString()
     private val documentStartKey by lazy { WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT) }
 
+    private fun createWebsite(id: String, url: String, javascript: Boolean, cookies: Boolean, zoom: Boolean): WebsiteView {
+        val view = WebView(this).apply {
+            setBackgroundColor(0xFF000000.toInt())
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isVerticalScrollBarEnabled = true
+            isHorizontalScrollBarEnabled = false
+        }
+        val item = WebsiteView(id, view, url, javascript, cookies, zoom)
+        configureWebsite(item)
+        websiteLayer.addView(view, FrameLayout.LayoutParams(1, 1))
+        view.loadUrl(url)
+        return item
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun configureWebsite(item: WebsiteView) {
+        with(item.webView.settings) {
+            javaScriptEnabled = item.javascript
+            domStorageEnabled = true
+            databaseEnabled = true
+            javaScriptCanOpenWindowsAutomatically = false
+            setSupportMultipleWindows(false)
+            allowFileAccess = false
+            allowContentAccess = false
+            allowFileAccessFromFileURLs = false
+            allowUniversalAccessFromFileURLs = false
+            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            mediaPlaybackRequiresUserGesture = true
+            cacheMode = WebSettings.LOAD_DEFAULT
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            setSupportZoom(item.zoom)
+            builtInZoomControls = item.zoom
+            displayZoomControls = false
+        }
+        val cookies = android.webkit.CookieManager.getInstance()
+        cookies.setAcceptCookie(item.cookies)
+        cookies.setAcceptThirdPartyCookies(item.webView, false)
+        item.webView.webChromeClient = object : WebChromeClient() {
+            override fun onShowCustomView(view: View, callback: CustomViewCallback) {
+                fullscreenCustomView?.let { websiteLayer.removeView(it) }
+                fullscreenCustomView = view
+                fullscreenCustomCallback = callback
+                websiteLayer.addView(view, FrameLayout.LayoutParams(-1, -1))
+                view.bringToFront()
+                hideSystemUi()
+            }
+            override fun onHideCustomView() {
+                fullscreenCustomView?.let { websiteLayer.removeView(it) }
+                fullscreenCustomView = null
+                fullscreenCustomCallback = null
+                hideSystemUi()
+                websiteViews.values.forEach(::updateWebsiteBounds)
+            }
+
+            override fun onProgressChanged(view: WebView, newProgress: Int) {
+                if (newProgress == 100 && item.cookies) android.webkit.CookieManager.getInstance().flush()
+            }
+        }
+        item.webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+                WebsiteUrl.normalize(request.url.toString()) == null
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = WebsiteUrl.normalize(url) == null
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) item.webView.settings.safeBrowsingEnabled = true
+    }
+
+    private fun updateWebsiteBounds(item: WebsiteView) {
+        if (item.webView.parent == null || !::root.isInitialized) return
+        val density = resources.displayMetrics.density
+        val full = fullscreenWebsite == item.id
+        val rect = item.rect
+        val left = if (full) 0 else (rect.left * density).toInt()
+        val top = if (full) 0 else (rect.top * density).toInt()
+        val width = if (full) root.width else (rect.width * density).toInt()
+        val height = if (full) root.height else (rect.height * density).toInt()
+        val params = item.webView.layoutParams as FrameLayout.LayoutParams
+        params.width = width.coerceAtLeast(1)
+        params.height = height.coerceAtLeast(1)
+        params.leftMargin = left
+        params.topMargin = top
+        item.webView.layoutParams = params
+        val visible = full || (width > 1 && height > 1 && left < root.width && top < root.height && left + width > 0 && top + height > 0)
+        item.webView.visibility = if (visible) View.VISIBLE else View.INVISIBLE
+        if (full) item.webView.bringToFront()
+    }
+
+    private fun dismissWebsiteCustomView() {
+        val callback = fullscreenCustomCallback
+        fullscreenCustomView?.let { websiteLayer.removeView(it) }
+        fullscreenCustomView = null
+        fullscreenCustomCallback = null
+        callback?.onCustomViewHidden()
+        hideSystemUi()
+    }
+
+    private fun websiteAction(id: String, action: String) {
+        val item = websiteViews[id] ?: return
+        when (action) {
+            "refresh" -> item.webView.reload()
+            "back" -> if (item.webView.canGoBack()) item.webView.goBack()
+            "zoomIn" -> if (item.zoom) item.webView.zoomIn()
+            "zoomOut" -> if (item.zoom) item.webView.zoomOut()
+            "fullscreen" -> {
+                fullscreenWebsite = if (fullscreenWebsite == id) null else id
+                websiteViews.values.forEach(::updateWebsiteBounds)
+            }
+        }
+    }
+
+    private fun removeWebsite(id: String) {
+        val item = websiteViews.remove(id) ?: return
+        if (fullscreenWebsite == id) fullscreenWebsite = null
+        websiteLayer.removeView(item.webView)
+        item.webView.stopLoading()
+        item.webView.destroy()
+    }
+
     private fun panelBootstrap(): String {
         val configuration = resources.configuration
         val languages = JSONArray()
@@ -362,6 +521,38 @@ class MainActivity : Activity(), SensorEventListener {
 
     inner class Bridge {
         private fun ok(key: String) = key == bridgeKey
+
+        @JavascriptInterface
+        fun websiteSet(key: String, id: String, url: String, left: Float, top: Float, width: Float, height: Float,
+                       visible: Boolean, javascript: Boolean, cookies: Boolean, zoom: Boolean) {
+            if (!ok(key) || id.isBlank() || id.length > 180) return
+            val safeUrl = WebsiteUrl.normalize(url) ?: return
+            val rect = WebsiteRect.sanitized(left, top, width, height)
+            runOnUiThread {
+                if (destroyed || !::websiteLayer.isInitialized) return@runOnUiThread
+                if (!visible) { removeWebsite(id); return@runOnUiThread }
+                val item = websiteViews[id] ?: createWebsite(id, safeUrl, javascript, cookies, zoom).also { websiteViews[id] = it }
+                if (item.url != safeUrl || item.javascript != javascript || item.cookies != cookies || item.zoom != zoom) {
+                    item.url = safeUrl; item.javascript = javascript; item.cookies = cookies; item.zoom = zoom
+                    configureWebsite(item)
+                    if (item.webView.url != safeUrl) item.webView.loadUrl(safeUrl)
+                }
+                item.rect = rect
+                updateWebsiteBounds(item)
+            }
+        }
+
+        @JavascriptInterface
+        fun websiteAction(key: String, id: String, action: String) {
+            if (!ok(key) || id.length > 180 || action !in setOf("refresh", "back", "zoomIn", "zoomOut", "fullscreen")) return
+            runOnUiThread { websiteAction(id, action) }
+        }
+
+        @JavascriptInterface
+        fun websiteRemove(key: String, id: String) {
+            if (!ok(key) || id.length > 180) return
+            runOnUiThread { removeWebsite(id) }
+        }
 
         private val validTrackpadTypes = setOf("move", "click", "rightClick", "mousedown", "mouseup", "scroll", "hscroll") +
             // multi-finger gestures: three or four fingers swiping, four or five spreading or pinching (the agent follows the Mac's settings)

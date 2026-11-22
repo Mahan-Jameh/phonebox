@@ -32,7 +32,7 @@ flowchart LR
 
 Contributions are welcome: read [CONTRIBUTING.md](../CONTRIBUTING.md) first (scope, the security model, privacy and tests).
 
-Use the .NET 10 SDK for the agent, JDK 17 and Android SDK Platform 35 for Android builds, and Python 3 plus
+Use the .NET 10 SDK for the agent, JDK 17 and Android SDK Platform 35 for Android 8+ (API 26+) builds, and Python 3 plus
 Node.js 22 for the browser tooling. The Gradle wrapper downloads Gradle automatically.
 
 Run the following commands from the repository root unless a working directory is shown.
@@ -116,6 +116,9 @@ The panel is plain ES modules: [`main.js`](../android/app/src/main/assets/www/ma
 from the agent) and the widgets in [`widgets/`](../android/app/src/main/assets/www/widgets). A widget is a
 `{ needs, create(box, ctx) → { update(kind) } }` entry in the `W` registry, plus its styles in `style.css` and its catalogue entry
 (name, size, options) in [`widgets.json`](../agent/PhoneBox.Agent/widgets.json), which drives the settings editor.
+The Android Website widget is a native overlay: the panel sends its validated HTTPS URL and bounds through the
+authenticated bridge, then Android renders a separate, bridge-free `WebView`. The Windows Agent uses the same catalogue
+to edit and preview its configuration; only the phone loads the website.
 Templates live in [`templates.json`](../agent/PhoneBox.Agent/templates.json).
 
 ### Isolated agent runs
