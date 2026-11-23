@@ -16,6 +16,7 @@
   const screen = '.min-h-screen:has(> .pb-8 > ' + scope + ')';
   const footer = 'main:has(> [data-phonebox-trade-pair]) + footer.fixed:has(> .min-w-10)';
   style.textContent = `
+    html:has(${scope}), body:has(${scope}), ${screen} { background: var(--background) !important; }
     ${screen} > header.h-14 { display: none !important; }
     ${screen} > .pb-8 { padding-bottom: 0 !important; }
     main:has(> [data-phonebox-trade-pair]) { min-height: 0 !important; }
@@ -24,13 +25,13 @@
       min-height: 24px;
       height: auto !important;
       border: 0 !important;
-      padding-inline: 8px;
+      padding-inline: 12px;
     }
     ${footer} > .flex-1 { display: none !important; }
     ${scope} {
       grid-template-columns: minmax(0, 1fr) !important;
-      gap: 8px !important;
-      padding: 6px;
+      gap: clamp(10px, 1.4vw, 18px) !important;
+      padding: 0 2px 6px;
       background: var(--background) !important;
     }
     ${scope} > :is(.order-1, .order-2) { display: none !important; }
@@ -38,19 +39,38 @@
       grid-area: auto !important;
       min-width: 0;
       align-self: start;
-      border-radius: 12px !important;
+      border-radius: 20px !important;
       border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--background) 97%, var(--foreground)) !important;
     }
+    ${scope} > .order-3 { position: relative; }
+    ${scope} > .order-4 { display: flex; flex-direction: column; }
+    ${scope} > .order-4 > .group\\/tabs { flex: 1; height: auto !important; min-height: 0; }
     ${scope} > .order-3::before {
       content: attr(data-phonebox-trade-pair);
-      display: block;
-      padding: 12px 16px 0;
+      position: absolute;
+      inset-inline-end: 16px;
+      top: 16px;
+      color: var(--muted-foreground);
+      font-size: .8rem;
+      line-height: 1.75rem;
       font-weight: 600;
       direction: ltr;
-      text-align: start;
+      pointer-events: none;
+    }
+    ${scope} > .order-4::before {
+      content: 'Trading activity';
+      display: block;
+      padding: 16px 16px 8px;
+      font-weight: 600;
+      font-size: 1.125rem;
+      line-height: 1.75rem;
+    }
+    ${scope}:lang(fa) > .order-4::before {
+      content: 'معاملات';
     }
     @media (min-width: 880px) {
-      ${scope} { grid-template-columns: minmax(300px, 360px) minmax(0, 1fr) !important; }
+      ${scope} { grid-template-columns: minmax(320px, 4fr) minmax(0, 5fr) !important; }
       ${scope} > .order-4 { align-self: stretch; }
     }
   `;

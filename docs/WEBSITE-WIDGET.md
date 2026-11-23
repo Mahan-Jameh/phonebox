@@ -11,7 +11,7 @@ sessions, pinch zoom and fullscreen video are supported. Cookies and JavaScript 
 
 TrueTrade exchange market URLs start in a compact layout when the site's order form and activity tabs are present.
 On a phone the order form and the activity tabs stack vertically, while wider screens show them side by side. The
-activity box keeps the site's tabs for positions, pending orders and history. Use the **◫** toolbar button to switch
+activity box keeps the site's tabs for positions, pending orders and history. Use the **نمای کامل** toolbar button to switch
 to the full page for the chart or to change markets. The compact layout uses the original TrueTrade controls and
 leaves sign-in, order confirmation and account handling to the website. If the expected layout is missing, PhoneBox
 shows the regular site.

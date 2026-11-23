@@ -44,7 +44,14 @@ W.website = {
     }
     bar.append(back, reload, zoomOut, zoomIn, full);
     if (bridge?.websiteAction && tradeMarket) {
-      const layout = action('نمای کامل یا نمای معامله', '◫', 'tradeLayout');
+      box.classList.add('ws-compact');
+      reload.classList.add('ws-keep');
+      const layout = action('نمای کامل یا نمای معامله', 'نمای کامل', 'tradeLayout');
+      layout.classList.add('ws-layout', 'ws-keep');
+      layout.addEventListener('click', () => {
+        const compact = box.classList.toggle('ws-compact');
+        layout.textContent = compact ? 'نمای کامل' : 'نمای معامله';
+      });
       bar.append(layout);
     }
     bar.append(title);
