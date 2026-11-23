@@ -16,6 +16,10 @@ to the full page for the chart or to change markets. The compact layout uses the
 leaves sign-in, order confirmation and account handling to the website. If the expected layout is missing, PhoneBox
 shows the regular site.
 
+The native surface is aligned to the widget's physical bounds in both left-to-right and right-to-left Android
+locales. In compact mode, the website navigation and footer links are hidden and the connection indicator remains
+below the two cards. The full view restores the website navigation and links.
+
 The site runs in a separate WebView, not in the PhoneBox panel WebView. It receives no `Android` interface, PhoneBox
 bridge key, agent proxy headers, `/agent` transport or widget messaging API. PhoneBox blocks non-HTTPS navigation,
 mixed content, file/content access and third-party cookies. Website traffic goes directly from the phone to the configured

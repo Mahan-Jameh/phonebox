@@ -65,11 +65,14 @@ W.website = {
       if (dead || !stage.isConnected) return;
       const r = stage.getBoundingClientRect();
       const visible = r.width > 1 && r.height > 1 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
-      const values = [url, r.left, r.top, r.width, r.height, visible, o.javascript !== false, o.cookies !== false, o.zoom !== false];
+      const outerRadius = parseFloat(getComputedStyle(box).borderBottomLeftRadius) || 0;
+      const bottomRadius = Math.max(0, Math.min(8, outerRadius));
+      const values = [url, r.left, r.top, r.width, r.height, visible, o.javascript !== false, o.cookies !== false, o.zoom !== false, bottomRadius];
       const key = values.join('|');
       if (key === last) return;
       last = key;
-      bridge.websiteSet(id, url, r.left, r.top, r.width, r.height, visible, o.javascript !== false, o.cookies !== false, o.zoom !== false);
+      stage.style.setProperty('--ws-radius', `${bottomRadius}px`);
+      bridge.websiteSet(id, ...values);
     };
     const resize = new ResizeObserver(sync);
     resize.observe(stage);

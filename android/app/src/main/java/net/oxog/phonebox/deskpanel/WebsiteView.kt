@@ -2,9 +2,17 @@ package net.oxog.phonebox.deskpanel
 
 import java.net.URI
 import android.webkit.WebView
+import kotlin.math.roundToInt
 
 /** Geometry is reported in the panel WebView's CSS pixels and converted for the native overlay. */
 internal data class WebsiteRect(val left: Float, val top: Float, val width: Float, val height: Float) {
+    fun atDensity(density: Float): WebsiteBounds {
+        val x = (left * density).roundToInt()
+        val y = (top * density).roundToInt()
+        return WebsiteBounds(x, y, ((left + width) * density).roundToInt() - x,
+            ((top + height) * density).roundToInt() - y)
+    }
+
     companion object {
         fun sanitized(left: Float, top: Float, width: Float, height: Float): WebsiteRect = WebsiteRect(
             if (left.isFinite()) left.coerceIn(-100_000f, 100_000f) else -100_000f,
@@ -15,6 +23,8 @@ internal data class WebsiteRect(val left: Float, val top: Float, val width: Floa
     }
 }
 
+internal data class WebsiteBounds(val left: Int, val top: Int, val width: Int, val height: Int)
+
 internal data class WebsiteView(
     val id: String,
     val webView: WebView,
@@ -24,6 +34,7 @@ internal data class WebsiteView(
     var zoom: Boolean,
     var rect: WebsiteRect = WebsiteRect(0f, 0f, 0f, 0f),
     var tradeLayout: Boolean = true,
+    var bottomRadius: Float = 0f,
 )
 
 /** Accept only HTTPS top-level destinations; webpage scripts and redirects cannot escape to app or file schemes. */

@@ -13,11 +13,25 @@
   const style = document.createElement('style');
   style.id = id;
   const scope = 'main > [data-phonebox-trade-pair]';
+  const screen = '.min-h-screen:has(> .pb-8 > ' + scope + ')';
+  const footer = 'main:has(> [data-phonebox-trade-pair]) + footer.fixed:has(> .min-w-10)';
   style.textContent = `
+    ${screen} > header.h-14 { display: none !important; }
+    ${screen} > .pb-8 { padding-bottom: 0 !important; }
+    main:has(> [data-phonebox-trade-pair]) { min-height: 0 !important; }
+    ${footer} {
+      position: static !important;
+      min-height: 24px;
+      height: auto !important;
+      border: 0 !important;
+      padding-inline: 8px;
+    }
+    ${footer} > .flex-1 { display: none !important; }
     ${scope} {
       grid-template-columns: minmax(0, 1fr) !important;
-      gap: 12px !important;
-      padding: 12px;
+      gap: 8px !important;
+      padding: 6px;
+      background: var(--background) !important;
     }
     ${scope} > :is(.order-1, .order-2) { display: none !important; }
     ${scope} > :is(.order-3, .order-4) {
@@ -37,6 +51,7 @@
     }
     @media (min-width: 880px) {
       ${scope} { grid-template-columns: minmax(300px, 360px) minmax(0, 1fr) !important; }
+      ${scope} > .order-4 { align-self: stretch; }
     }
   `;
 

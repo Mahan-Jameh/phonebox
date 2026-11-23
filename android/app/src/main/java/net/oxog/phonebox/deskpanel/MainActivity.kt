@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.content.res.Configuration
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.graphics.Outline
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -27,6 +28,7 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
@@ -47,6 +49,7 @@ import androidx.webkit.WebViewFeature
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
+import kotlin.math.ceil
 
 /**
  * Full-screen desk panel. The UI is plain HTML/JS bundled in assets/www.
@@ -125,6 +128,9 @@ class MainActivity : Activity(), SensorEventListener {
         root.addView(web, FrameLayout.LayoutParams(-1, -1))
         root.addView(websiteLayer, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
+        root.addOnLayoutChangeListener { _, _, _, right, bottom, _, _, oldRight, oldBottom ->
+            if (right != oldRight || bottom != oldBottom) websiteViews.values.forEach(::updateWebsiteBounds)
+        }
 
         with(web.settings) {
             javaScriptEnabled = true
@@ -394,6 +400,15 @@ class MainActivity : Activity(), SensorEventListener {
             isHorizontalScrollBarEnabled = false
         }
         val item = WebsiteView(id, view, url, javascript, cookies, zoom)
+        view.outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                val radius = if (fullscreenWebsite == id) 0f else
+                    (item.bottomRadius * resources.displayMetrics.density).coerceAtMost(minOf(view.width, view.height) / 2f)
+                // Move the upper corners above the WebView; the toolbar owns the top of the card.
+                outline.setRoundRect(0, -ceil(radius).toInt(), view.width, view.height, radius)
+            }
+        }
+        view.clipToOutline = true
         configureWebsite(item)
         websiteLayer.addView(view, FrameLayout.LayoutParams(1, 1))
         view.loadUrl(url)
@@ -465,21 +480,20 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
+    @SuppressLint("RtlHardcoded") // getBoundingClientRect reports physical left, regardless of locale.
     private fun updateWebsiteBounds(item: WebsiteView) {
         if (item.webView.parent == null || !::root.isInitialized) return
-        val density = resources.displayMetrics.density
         val full = fullscreenWebsite == item.id
-        val rect = item.rect
-        val left = if (full) 0 else (rect.left * density).toInt()
-        val top = if (full) 0 else (rect.top * density).toInt()
-        val width = if (full) root.width else (rect.width * density).toInt()
-        val height = if (full) root.height else (rect.height * density).toInt()
+        val (left, top, width, height) = if (full) WebsiteBounds(0, 0, root.width, root.height)
+            else item.rect.atDensity(resources.displayMetrics.density)
         val params = item.webView.layoutParams as FrameLayout.LayoutParams
+        params.gravity = Gravity.TOP or Gravity.LEFT
         params.width = width.coerceAtLeast(1)
         params.height = height.coerceAtLeast(1)
         params.leftMargin = left
         params.topMargin = top
         item.webView.layoutParams = params
+        item.webView.invalidateOutline()
         val visible = full || (width > 1 && height > 1 && left < root.width && top < root.height && left + width > 0 && top + height > 0)
         item.webView.visibility = if (visible) View.VISIBLE else View.INVISIBLE
         if (full) item.webView.bringToFront()
@@ -543,7 +557,7 @@ class MainActivity : Activity(), SensorEventListener {
 
         @JavascriptInterface
         fun websiteSet(key: String, id: String, url: String, left: Float, top: Float, width: Float, height: Float,
-                       visible: Boolean, javascript: Boolean, cookies: Boolean, zoom: Boolean) {
+                       visible: Boolean, javascript: Boolean, cookies: Boolean, zoom: Boolean, bottomRadius: Float) {
             if (!ok(key) || id.isBlank() || id.length > 180) return
             val safeUrl = WebsiteUrl.normalize(url) ?: return
             val rect = WebsiteRect.sanitized(left, top, width, height)
@@ -557,6 +571,7 @@ class MainActivity : Activity(), SensorEventListener {
                     if (item.webView.url != safeUrl) item.webView.loadUrl(safeUrl)
                 }
                 item.rect = rect
+                item.bottomRadius = if (bottomRadius.isFinite()) bottomRadius.coerceIn(0f, 32f) else 0f
                 updateWebsiteBounds(item)
             }
         }
