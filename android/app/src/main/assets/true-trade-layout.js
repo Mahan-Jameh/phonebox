@@ -55,7 +55,7 @@
       font-size: .8rem;
       line-height: 1.75rem;
       font-weight: 600;
-      direction: ltr;
+      unicode-bidi: isolate;
       pointer-events: none;
     }
     ${scope} > .order-4::before {
