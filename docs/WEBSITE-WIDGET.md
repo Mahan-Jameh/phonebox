@@ -24,6 +24,7 @@ For the BTCUSDT dashboard, choose **TrueTrade** directly in **Settings › Pages
 order form and activity together in one widget. Select **Order form** or **Trading activity** in the widget settings
 to lay out the cards separately. Separate cards share the site's cookies on the same device; use refresh on the
 other card after signing in if it still shows the logged-out state. The general Website widget remains available.
+New Agent configurations include **معاملات TrueTrade** with both cards ready to use.
 
 The site runs in a separate WebView, not in the PhoneBox panel WebView. It receives no `Android` interface, PhoneBox
 bridge key, agent proxy headers, `/agent` transport or widget messaging API. PhoneBox blocks non-HTTPS navigation,

@@ -64,6 +64,7 @@
     { "template": "procs" },
     { "template": "deck" },
     { "template": "music" },
+    { "id": "truetrade-dashboard", "title": "معاملات TrueTrade", "icon": "↗", "idleSec": 0, "widgets": [{ "id": "truetrade-cards", "type": "truetrade", "x": 0, "y": 0, "w": 12, "h": 6, "options": { "view": "both" } }] },
     { "template": "focus", "enabled": false },
     { "template": "world", "enabled": false }
   ],
