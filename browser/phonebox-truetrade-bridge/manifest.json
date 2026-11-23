@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "PhoneBox TrueTrade Bridge",
+  "version": "0.1.0",
+  "description": "Share and control the TrueTrade tab you select through the local PhoneBox Agent.",
+  "minimum_chrome_version": "118",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+g0sbNBZ15ObqKU5P6l017wzc1zNPIHgH4IijXir8wUsdxj6iYHNBaKkHdmIWJ76O6wT6z83ezzb2gb6zjZz4JJ2/UNYo8geMlXy+M/meUKQ+3nUz0watW1nMLKlmYopcyea+W3LJ9oLqIvmCpb3+Wqexvh9DUpQ3Qso381ZSkQf3AUADJeu2gdH/KCoMpqkEEgyj2UcfMt62VTraovt3QaLf0z3TCsclaW6J/26YyFtfmNrha1LlpLN0xuFjbU8eJ3cXW0gcTb2hw0pK3rQXcoURlVvhpHJiPX0eKBqmP3OvsTArYykb5D5XXp3fzWjMOvTFq0it4iV9wYtSCYPXQIDAQAB",
+  "background": {"service_worker": "bridge.js"},
+  "action": {"default_popup": "popup.html", "default_title": "PhoneBox TrueTrade"},
+  "permissions": ["debugger", "activeTab"],
+  "host_permissions": ["http://127.0.0.1/*"]
+}

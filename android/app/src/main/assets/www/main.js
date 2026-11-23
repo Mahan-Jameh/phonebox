@@ -11,6 +11,7 @@ import './widgets/pc.js';
 import './widgets/sky.js';
 import './widgets/web.js';
 import './widgets/website.js';
+import './widgets/tab-share.js';
 import './widgets/photos.js';
 import './widgets/controls.js';
 import './widgets/console.js';

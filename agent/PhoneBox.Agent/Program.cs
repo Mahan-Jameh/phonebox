@@ -222,6 +222,7 @@ app.MapGet("/api/latency", () => Results.Json(timings.Summary()));
 //  - The optional Wi-Fi port only serves the phone API, only over TLS, and only with the paired token.
 app.UseWebSockets();
 app.UseRouting();
+var tabShare = new TabShare();
 app.Use(async (ctx, next) =>
 {
     var origin = ctx.Request.Headers.Origin.ToString();
@@ -260,6 +261,33 @@ app.Use(async (ctx, next) =>
     else
     {
         var host = ctx.Request.Host.Host;
+        // The Chrome bridge has exactly one loopback endpoint and cannot use the other settings APIs.
+        if (ctx.Request.Path == TabShare.BridgePath)
+        {
+            if (ctx.Connection.LocalPort != Port || host != "127.0.0.1" || origin != TabShare.ExtensionOrigin)
+            {
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+            ctx.Response.Headers.AccessControlAllowOrigin = TabShare.ExtensionOrigin;
+            ctx.Response.Headers.CacheControl = "no-store";
+            if (HttpMethods.IsOptions(ctx.Request.Method))
+            {
+                ctx.Response.Headers.AccessControlAllowMethods = "POST";
+                ctx.Response.Headers.AccessControlAllowHeaders = "Content-Type";
+                ctx.Response.StatusCode = StatusCodes.Status204NoContent;
+                return;
+            }
+            var bodyLimit = ctx.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>();
+            if (bodyLimit is { IsReadOnly: false }) bodyLimit.MaxRequestBodySize = 820_000;
+            await next();
+            return;
+        }
+        if (ctx.Request.Path.StartsWithSegments(TabShare.ViewerPath))
+        {
+            ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
         var spotifyCallback = ctx.Request.Method == "GET" && ctx.Request.Path == "/api/controls/spotify/callback"
             && app.Services.GetRequiredService<SpotifyControl>().HasPendingState(ctx.Request.Query["state"]);
         if ((host != "127.0.0.1" && host != "localhost") || (origin != "" && !SameOrigins.Contains(origin))
@@ -284,6 +312,17 @@ app.Use(async (ctx, next) =>
     ctx.Response.Headers["X-Frame-Options"] = ctx.Request.Path.StartsWithSegments("/panel") ? "SAMEORIGIN" : "DENY";
     await next();
 });
+
+app.MapPost(TabShare.BridgePath, (TabShare.DesktopRequest request) => tabShare.Desktop(request));
+app.MapPost(TabShare.ViewerPath + "/claim", (HttpRequest req, string code) =>
+    tabShare.Claim(req.Headers["X-PhoneBox-Device"].ToString(), code));
+app.MapGet(TabShare.ViewerPath + "/frame", (HttpRequest req, string token, long after) =>
+    tabShare.View(req.Headers["X-PhoneBox-Device"].ToString(), token, after));
+app.MapPost(TabShare.ViewerPath + "/leave", (HttpRequest req, string token) =>
+    tabShare.Leave(req.Headers["X-PhoneBox-Device"].ToString(), token));
+app.MapPost(TabShare.ViewerPath + "/input", (HttpRequest req, string token, long sequence, string kind,
+    double x, double y, double delta, string? text) =>
+    tabShare.Send(req.Headers["X-PhoneBox-Device"].ToString(), token, new(sequence, kind, x, y, delta, text)));
 
 app.Map("/api/trackpad", TrackpadHandler.HandleEndpoint);
 
