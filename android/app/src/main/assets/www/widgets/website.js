@@ -2,6 +2,8 @@ import { bridge, h } from '../main.js';
 import { W } from '../registry.js';
 
 let nextWebsiteId = 1;
+const TRUE_TRADE_URL = 'https://www.thetruetrade.io/fa/trade/BTCUSDT';
+const tradeViews = new Set(['both', 'order', 'activity']);
 
 function httpsUrl(value) {
   try {
@@ -34,6 +36,7 @@ W.website = {
     const url = httpsUrl(o.url);
     const tradeMarket = url && new URL(url).origin === 'https://www.thetruetrade.io' &&
       /^\/(?:[a-z]{2}\/)?trade\/(?:futures\/)?[A-Z0-9]{3,30}\/?$/.test(new URL(url).pathname);
+    const tradeView = w.type === 'truetrade' && tradeViews.has(o.view) ? o.view : 'both';
     title.textContent = url ? new URL(url).host : 'Website';
     const frame = bridge ? null : document.createElement('iframe');
     if (frame) {
@@ -74,7 +77,7 @@ W.website = {
       const visible = r.width > 1 && r.height > 1 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
       const outerRadius = parseFloat(getComputedStyle(box).borderBottomLeftRadius) || 0;
       const bottomRadius = Math.max(0, Math.min(8, outerRadius));
-      const values = [url, r.left, r.top, r.width, r.height, visible, o.javascript !== false, o.cookies !== false, o.zoom !== false, bottomRadius];
+      const values = [url, r.left, r.top, r.width, r.height, visible, o.javascript !== false, o.cookies !== false, o.zoom !== false, bottomRadius, tradeView];
       const key = values.join('|');
       if (key === last) return;
       last = key;
@@ -92,5 +95,12 @@ W.website = {
         bridge.websiteRemove(id);
       },
     };
+  },
+};
+
+W.truetrade = {
+  needs: [],
+  create(box, context) {
+    return W.website.create(box, { ...context, o: { url: TRUE_TRADE_URL, view: context.o.view } });
   },
 };

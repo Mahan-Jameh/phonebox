@@ -1,11 +1,11 @@
-(enabled => {
+((enabled, view) => {
   // Run only in the top-level TrueTrade exchange document. Never read account or form data.
   if (window.top !== window || location.origin !== 'https://www.thetruetrade.io') return;
   const path = /^\/(?:[a-z]{2}\/)?trade\/(?:futures\/)?([A-Z0-9]{3,30})\/?$/;
   const id = 'phonebox-truetrade-layout';
   const selector = 'main > .grid:has(> .order-3 > form [data-testid="order-form"]):has(> .order-4 [role="tablist"] [role="tab"])';
   if (typeof window.phoneBoxTrueTradeLayout === 'function') {
-    window.phoneBoxTrueTradeLayout(enabled);
+    window.phoneBoxTrueTradeLayout(enabled, view);
     return;
   }
   if (!CSS.supports('selector(:has(*))')) return;
@@ -70,12 +70,15 @@
       content: 'معاملات';
     }
     @media (min-width: 880px) {
-      ${scope} { grid-template-columns: minmax(320px, 4fr) minmax(0, 5fr) !important; }
+      ${scope}[data-phonebox-trade-view="both"] { grid-template-columns: minmax(320px, 4fr) minmax(0, 5fr) !important; }
       ${scope} > .order-4 { align-self: stretch; }
     }
+    ${scope}[data-phonebox-trade-view="order"] > .order-4,
+    ${scope}[data-phonebox-trade-view="activity"] > .order-3 { display: none !important; }
   `;
 
   let active = false;
+  let selected = 'both';
   let grid = null;
   let form = null;
   let scheduled = false;
@@ -84,12 +87,16 @@
     const pair = active ? location.pathname.match(path)?.[1] : null;
     const next = pair ? document.querySelector(selector) : null;
     const nextForm = next?.querySelector(':scope > .order-3') ?? null;
-    if (grid !== next) grid?.removeAttribute('data-phonebox-trade-pair');
+    if (grid !== next) {
+      grid?.removeAttribute('data-phonebox-trade-pair');
+      grid?.removeAttribute('data-phonebox-trade-view');
+    }
     if (form !== nextForm) form?.removeAttribute('data-phonebox-trade-pair');
     grid = next;
     form = nextForm;
     if (!grid || !form) return;
     if (grid.getAttribute('data-phonebox-trade-pair') !== pair) grid.setAttribute('data-phonebox-trade-pair', pair);
+    if (grid.getAttribute('data-phonebox-trade-view') !== selected) grid.setAttribute('data-phonebox-trade-view', selected);
     if (form.getAttribute('data-phonebox-trade-pair') !== pair) form.setAttribute('data-phonebox-trade-pair', pair);
   };
   const schedule = () => {
@@ -99,8 +106,9 @@
     }
   };
   const observer = new MutationObserver(schedule);
-  window.phoneBoxTrueTradeLayout = value => {
+  window.phoneBoxTrueTradeLayout = (value, mode) => {
     active = value === true;
+    selected = mode === 'order' || mode === 'activity' ? mode : 'both';
     if (active) {
       if (!style.isConnected) document.head.append(style);
       observer.observe(document.documentElement, { childList: true, subtree: true });
@@ -112,5 +120,5 @@
     }
     update();
   };
-  window.phoneBoxTrueTradeLayout(enabled);
+  window.phoneBoxTrueTradeLayout(enabled, view);
 })

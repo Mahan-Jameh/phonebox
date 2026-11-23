@@ -476,7 +476,7 @@ class MainActivity : Activity(), SensorEventListener {
         if (item.javascript && WebsiteUrl.isTrueTradeMarket(item.url) &&
             WebsiteUrl.isTrueTradeMarket(item.webView.url)) {
             // A fixed presentation script. It receives no PhoneBox credentials or bridge object.
-            item.webView.evaluateJavascript("$tradeLayoutScript(${item.tradeLayout})", null)
+            item.webView.evaluateJavascript("$tradeLayoutScript(${item.tradeLayout}, ${JSONObject.quote(item.tradeView)})", null)
         }
     }
 
@@ -557,7 +557,8 @@ class MainActivity : Activity(), SensorEventListener {
 
         @JavascriptInterface
         fun websiteSet(key: String, id: String, url: String, left: Float, top: Float, width: Float, height: Float,
-                       visible: Boolean, javascript: Boolean, cookies: Boolean, zoom: Boolean, bottomRadius: Float) {
+                       visible: Boolean, javascript: Boolean, cookies: Boolean, zoom: Boolean, bottomRadius: Float,
+                       tradeView: String) {
             if (!ok(key) || id.isBlank() || id.length > 180) return
             val safeUrl = WebsiteUrl.normalize(url) ?: return
             val rect = WebsiteRect.sanitized(left, top, width, height)
@@ -572,6 +573,11 @@ class MainActivity : Activity(), SensorEventListener {
                 }
                 item.rect = rect
                 item.bottomRadius = if (bottomRadius.isFinite()) bottomRadius.coerceIn(0f, 32f) else 0f
+                val safeTradeView = if (tradeView == "order" || tradeView == "activity") tradeView else "both"
+                if (item.tradeView != safeTradeView) {
+                    item.tradeView = safeTradeView
+                    applyTradeLayout(item)
+                }
                 updateWebsiteBounds(item)
             }
         }

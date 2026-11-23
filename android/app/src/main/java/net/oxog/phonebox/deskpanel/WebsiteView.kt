@@ -35,6 +35,7 @@ internal data class WebsiteView(
     var rect: WebsiteRect = WebsiteRect(0f, 0f, 0f, 0f),
     var tradeLayout: Boolean = true,
     var bottomRadius: Float = 0f,
+    var tradeView: String = "both",
 )
 
 /** Accept only HTTPS top-level destinations; webpage scripts and redirects cannot escape to app or file schemes. */
